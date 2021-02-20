@@ -125,10 +125,7 @@ w = np.random.random_sample(3)
 
 lreg = Logistic_regression()
 
-for i in LR:
-    w, cost_train, cost_test = lreg.gradient_descent(X_train, Y_train, X_test, Y_test, i)
-
-
+ 
 
 
 
