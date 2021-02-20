@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from numpy.random import random_sample
 
 
 
@@ -24,15 +25,14 @@ class Logistic_regression:
 
     # Cost function for an input set of weights
     def cost(self, X, y, w):
-        # returns the average cross entropy cost
-        size = X.shape[0]
-        z = np.dot(X, w.T)
-        return np.sum(np.log(1 + np.exp(z)) - np.dot(y,z)) / size
+        N = X.shape[0]
+        X = self.prepare_x(X)
+        sig = self.sigmoid(X, w)
+        return (np.dot(-y, np.log(sig)) - np.dot((1 - y).T, np.log(1 - sig))) / N
 
     def gradient(self, w, X, y):
         size = X.shape[0]
-        X = self.prepare_x(X)
-        return np.dot(X.T, self.sigmoid(X, self.w) - y) / size
+        return np.dot(X.T, self.sigmoid(X, w) - y) / size
 
     def norm(self, w):
         return np.linalg.norm(w, ord=2)
@@ -41,11 +41,12 @@ class Logistic_regression:
     def gradient_descent(self, X, y, lr):
         # returns s scalar of the magnitude of the Euclidean norm
         #  of the change in the weights during one gradient descent step
-        pre_norm = self.norm(self.w)
         self.w = self.w - lr * self.gradient(self.w, X, y)
-        cur_norm = self.norm(self.w)
-        return abs(pre_norm - cur_norm)
+        return self.norm(self.saved_w[-1] - self.w)
 
+    def __refesh_weight(self, w_init):
+        self.saved_w.clear()
+        self.saved_w.append(self.w)
 
     # Fit the logistic regression model to the data through gradient descent
     def fit(self, X, y, w_init, lr, delta_thresh=1e-6, max_iter=5000, verbose=False):
@@ -54,6 +55,10 @@ class Logistic_regression:
         self.w = w_init
         step_size = 1
         step = 0
+
+        X = self.prepare_x(X)
+
+        self.__refesh_weight(w_init)
 
         while True:
             # Check stop conditions
@@ -64,8 +69,11 @@ class Logistic_regression:
             if step > max_iter:
                 break
 
+            # One step gradient descent
             step_size = self.gradient_descent(X, y, lr)
 
+            # Save weight
+            self.saved_w.append(self.w)
 
     # Use the trained model to predict the confidence scores (prob of positive class in this case)
     def predict_proba(self, X):
@@ -88,7 +96,10 @@ class Logistic_regression:
     def learning_curve(self, X, y):
         # returns the value of the cost function from each step in gradient descent
         #  from the last model fitting process
-        pass
+        cost = []
+        for w in self.saved_w:
+            cost.append(self.cost(X, y, w))
+        return cost
 
     # Appends a column of ones as the first feature to account for the bias term
     def prepare_x(self, X):
@@ -116,19 +127,27 @@ print(X_train.shape)
 ##############################################################
 # h
 ##############################################################
-LR = [10e-2, 10e-4, 10e-6, 10e0]
 
+import seaborn as sns
+import matplotlib.pyplot as plt
 
+LR = [10e-2, 10e-4, 10e-6, 1]
 np.random.seed(1234)
-cost = []
-w = np.random.random_sample(3)
 
-lreg = Logistic_regression()
+init_w = random_sample(3)
 
- 
+for lr in LR:
+    reg = Logistic_regression()
+    reg.fit(X_train, Y_train, init_w, lr=lr, max_iter=5000)
+    cost = reg.learning_curve(X_train, Y_train)
+    plt.plot(cost, label='learning rate={}'.format(lr))
 
-
-
+# Output picture
+plt.xlabel('Number of iteration')
+plt.ylabel('Cost')
+plt.title('Cost function under different learning rates over 50 iterations')
+plt.legend()
+plt.show()
 
 
 
