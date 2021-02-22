@@ -5,8 +5,6 @@ from numpy.random import random_sample
 
 
 
-
-
 # Logistic regression class
 class Logistic_regression:
     # Class constructor
@@ -87,10 +85,8 @@ class Logistic_regression:
     def predict(self, X, thresh=0.5):
         # returns a binary prediction for each sample
         proba = self.predict_proba(X)
-        if proba > thresh:
-            return 1
-        else:
-            return 0
+        return np.array(list(map(int, np.array(proba > 0.5))))
+
 
     # Stores the learning curves from saved weights from gradient descent
     def learning_curve(self, X, y):
@@ -105,7 +101,6 @@ class Logistic_regression:
     def prepare_x(self, X):
         # returns the X with a new feature of all ones (a column that is the new column 0)
         return np.concatenate((np.ones((X.shape[0], 1)), X), axis=1)
-
 
 
 
@@ -128,41 +123,49 @@ print(X_train.shape)
 # h
 ##############################################################
 
-import seaborn as sns
-import matplotlib.pyplot as plt
-
-LR = [10e-2, 10e-4, 10e-6, 1]
-np.random.seed(1234)
+from sklearn.neighbors import KNeighborsClassifier
 
 init_w = random_sample(3)
 
-for lr in LR:
+
+import numpy as np
+from sklearn import metrics
+from numpy.random import random_sample
+
+import seaborn as sns
+import matplotlib.pyplot as plt
+from matplotlib.colors import ListedColormap
+
+### Test model performance through cross validation
+from sklearn.model_selection import StratifiedKFold
+
+kf = StratifiedKFold(n_splits=10, shuffle=True)
+kf_lr_pred = []
+kf_knn_pred = []
+kf_answer = []
+
+for train_index, val_index in kf.split(X_train, Y_train):
+
+    # Split data
+    cv_train_X, cv_valid_X = X_train.iloc[train_index], X_train.iloc[val_index]
+    cv_train_y, cv_valid_y = Y_train[train_index], Y_train[val_index]
+
+    # Training
     reg = Logistic_regression()
-    reg.fit(X_train, Y_train, init_w, lr=lr, max_iter=5000)
-    cost = reg.learning_curve(X_train, Y_train)
-    plt.plot(cost, label='learning rate={}'.format(lr))
+    reg.fit(cv_train_X, cv_train_y, init_w, lr=1, max_iter=500)
 
-# Output picture
-plt.xlabel('Number of iteration')
-plt.ylabel('Cost')
-plt.title('Cost function under different learning rates over 50 iterations')
-plt.legend()
-plt.show()
+    knn = KNeighborsClassifier(n_neighbors=7)
+    knn.fit(X_train, Y_train)
 
+    # Predict
+    kf_lr_pred.extend(reg.predict(cv_valid_X))
+    kf_knn_pred.extend(knn.predict(cv_valid_X))
+    kf_answer.extend(cv_valid_y)
 
 
-
-
-
-
-
-
-
-
-
-
-
-
+fpr, tpr, thres = metrics.roc_curve(kf_answer, kf_lr_pred, pos_label=1)
+auc = metrics.roc_auc_score(kf_answer, kf_lr_pred)
+legend_string = 'AUC = {:0.3f}'.format(auc)
 
 
 
